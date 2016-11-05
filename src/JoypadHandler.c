@@ -12,27 +12,27 @@ void Joypad_update()
 
     if (joystate & BUTTON_RIGHT)
     {
-        cameraPixelX += TOP_SPEED;
+        fgCameraPixelX += TOP_SPEED;
     }
     else if (joystate & BUTTON_LEFT)
     {
         // Since we're directly manipulating the camera, make sure it doesn't go negative.
-        if (cameraPixelX != 0)
+        if (fgCameraPixelX != 0)
         {
-            cameraPixelX -= TOP_SPEED;
+            fgCameraPixelX -= TOP_SPEED;
         }
     }
 
     if (joystate & BUTTON_UP)
     {
         // Since we're directly manipulating the camera, make sure it doesn't go negative.
-        if (cameraPixelY != 0)
+        if (fgCameraPixelY != 0)
         {
-            cameraPixelY -= TOP_SPEED;
+            fgCameraPixelY -= TOP_SPEED;
         }
     }
     else if (joystate & BUTTON_DOWN)
     {
-        cameraPixelY += TOP_SPEED;
+        fgCameraPixelY += TOP_SPEED;
     }
 }

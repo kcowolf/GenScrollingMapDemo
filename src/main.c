@@ -19,9 +19,9 @@ int main()
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 
     // Load palettes
-    VDP_setPalette(PAL0, PAL_TEST);
-    VDP_setPaletteColor(0, 0x0e00);  // Background color
-    VDP_setPalette(PAL1, palette_red);
+    VDP_setPalette(PAL0, PAL_TEST_BG);
+    VDP_setPalette(PAL1, PAL_TEST_FG);
+    VDP_setPaletteColor((PAL1 * 16), 0x0e00);  // Background color
     VDP_setPalette(PAL2, palette_green);
     VDP_setPalette(PAL3, palette_blue);
     VDP_setPaletteColor((PAL3 * 16) + 15, 0x0eee);  // Text color
