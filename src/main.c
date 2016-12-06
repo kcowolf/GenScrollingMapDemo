@@ -28,10 +28,6 @@ int main()
 
     ScrollingMap_init();
 
-    VDP_setTextPalette(PAL3);
-    VDP_drawText("Genesis Scrolling Map Demo", 2, 2);
-    VDP_drawText("Benjamin Stauffer", 2, 3);
-
     while(1)
     {
         Joypad_update();
