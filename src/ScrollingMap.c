@@ -84,15 +84,31 @@ void ScrollingMap_init()
 
     // Calculate row offsets so we don't need to multiply later.
     u16 rowOffset = 0;
+    u16 rowOffsetIncrease = fgMap.w * ROW_OFFSET_COUNT;
     u16 i;
-    for (i = 0; i < fgMap.h; i++)
+    for (i = 0; i < ROW_OFFSET_GROUP_COUNT; i++)
+    {
+        fgRowGroupOffsets[i] = rowOffset;
+        rowOffset += rowOffsetIncrease;
+    }
+
+    rowOffset = 0;
+    for (i = 0; i < ROW_OFFSET_COUNT; i++)
     {
         fgRowOffsets[i] = rowOffset;
         rowOffset += fgMap.w;
     }
 
     rowOffset = 0;
-    for (i = 0; i < bgMap.h; i++)
+    rowOffsetIncrease = bgMap.w * ROW_OFFSET_COUNT;
+    for (i = 0; i < ROW_OFFSET_GROUP_COUNT; i++)
+    {
+        bgRowGroupOffsets[i] = rowOffset;
+        rowOffset += rowOffsetIncrease;
+    }
+
+    rowOffset = 0;
+    for (i = 0; i < ROW_OFFSET_COUNT; i++)
     {
         bgRowOffsets[i] = rowOffset;
         rowOffset += bgMap.w;
@@ -174,7 +190,7 @@ void ScrollingMap_updateVDP()
 void redrawForegroundRow(u16 rowToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = fgMap.tilemap + fgRowOffsets[rowToUpdate] + fgCameraTileX;
+    const u16* mapDataAddr = fgMap.tilemap + fgRowGroupOffsets[rowToUpdate >> 3] + fgRowOffsets[rowToUpdate & 7]+ fgCameraTileX;
 
     u16 rowBufferIdx = fgCameraTileX;
     u16 baseTile = TILE_ATTR_FULL(PAL_FG, 0, 0, 0, fgTilesetStartIdx);
@@ -184,7 +200,6 @@ void redrawForegroundRow(u16 rowToUpdate)
     for (i = VDP_PLANE_TILE_WIDTH; i != 0; i--)
     {
         rowBufferIdx &= 0x3F;  // rowBufferIdx MOD 64 (VDP_PLANE_TILE_WIDTH)
-        // TODO -- Need to determine which is better -- rowBuffer[rowBufferIdx] or *(rowBuffer + rowBufferIdx).
         fgRowBuffer[rowBufferIdx] = baseTile + *mapDataAddr;
         rowBufferIdx++;
         mapDataAddr++;
@@ -197,7 +212,7 @@ void redrawForegroundRow(u16 rowToUpdate)
 void redrawBackgroundRow(u16 rowToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[rowToUpdate] + bgCameraTileX;
+    const u16* mapDataAddr = bgMap.tilemap + bgRowGroupOffsets[rowToUpdate >> 3] + bgRowOffsets[rowToUpdate & 7] + bgCameraTileX;
 
     u16 rowBufferIdx = bgCameraTileX;
     u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
@@ -207,7 +222,6 @@ void redrawBackgroundRow(u16 rowToUpdate)
     for (i = VDP_PLANE_TILE_WIDTH; i != 0; i--)
     {
         rowBufferIdx &= 0x3F;  // rowBufferIdx MOD 64 (VDP_PLANE_TILE_WIDTH)
-        // TODO -- Need to determine which is better -- rowBuffer[rowBufferIdx] or *(rowBuffer + rowBufferIdx).
         bgRowBuffer[rowBufferIdx] = baseTile + *mapDataAddr;
         rowBufferIdx++;
         mapDataAddr++;
@@ -220,7 +234,7 @@ void redrawBackgroundRow(u16 rowToUpdate)
 void redrawForegroundColumn(u16 columnToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = fgMap.tilemap + fgRowOffsets[fgCameraTileY] + columnToUpdate;
+    const u16* mapDataAddr = fgMap.tilemap + fgRowGroupOffsets[fgCameraTileY >> 3] + fgRowOffsets[fgCameraTileY & 7] + columnToUpdate;
 
     u16 columnBufferIdx = fgCameraTileY;
     u16 baseTile = TILE_ATTR_FULL(PAL_FG, 0, 0, 0, fgTilesetStartIdx);
@@ -242,7 +256,7 @@ void redrawForegroundColumn(u16 columnToUpdate)
 void redrawBackgroundColumn(u16 columnToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY] + columnToUpdate;
+    const u16* mapDataAddr = bgMap.tilemap + bgRowGroupOffsets[bgCameraTileY >> 3] + bgRowOffsets[bgCameraTileY & 7] + columnToUpdate;
 
     u16 columnBufferIdx = bgCameraTileY;
     u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
@@ -270,7 +284,7 @@ void redrawForegroundScreen()
         currentCol--;
 
         // Calculate where in the tilemap the new row's tiles are located.
-        const u16* mapDataAddr = fgMap.tilemap + fgRowOffsets[fgCameraTileY] + fgCameraTileX + currentCol;
+        const u16* mapDataAddr = fgMap.tilemap + fgRowGroupOffsets[fgCameraTileY >> 3] + fgRowOffsets[fgCameraTileY & 7] + fgCameraTileX + currentCol;
 
         u16 columnBufferIdx = fgCameraTileY;
         u16 baseTile = TILE_ATTR_FULL(PAL_FG, 0, 0, 0, fgTilesetStartIdx);
@@ -299,7 +313,7 @@ void redrawBackgroundScreen()
         currentCol--;
 
         // Calculate where in the tilemap the new row's tiles are located.
-        const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY] + bgCameraTileX + currentCol;
+        const u16* mapDataAddr = bgMap.tilemap + bgRowGroupOffsets[bgCameraTileY >> 3] + bgRowOffsets[bgCameraTileY & 7] + bgCameraTileX + currentCol;
 
         u16 columnBufferIdx = bgCameraTileY;
         u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);

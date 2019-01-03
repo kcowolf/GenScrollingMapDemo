@@ -15,11 +15,16 @@ void ScrollingMap_init();
 void ScrollingMap_update();
 void ScrollingMap_updateVDP();
 
-// TODO -- Set this equal to the maximum allowed map height (in tiles).
-// 128 tiles = 1024 pixels = 4.57 times the height of the screen.  Seems like a reasonable limit.
-#define ROW_OFFSET_COUNT 128
+// ROW_OFFSET_GROUP_COUNT * ROW_OFFSET_COUNT is the maximum allowed map height (in tiles).
+// ROW_OFFSET_GROUP_COUNT * ROW_OFFSET_COUNT = 128 tiles = 1024 pixels = 4.57 times the height of the screen.
+// Seems like a reasonable limit.
+
+#define ROW_OFFSET_GROUP_COUNT 16
+#define ROW_OFFSET_COUNT 8
+
+u16 fgRowGroupOffsets[ROW_OFFSET_GROUP_COUNT];
+u16 bgRowGroupOffsets[ROW_OFFSET_GROUP_COUNT];
 
 u16 fgRowOffsets[ROW_OFFSET_COUNT];
 u16 bgRowOffsets[ROW_OFFSET_COUNT];
-
 #endif // SCROLLINGMAP_H
