@@ -29,8 +29,10 @@ u16 bgCameraTileX;
 u16 bgCameraTileY;
 
 // Buffers used for copying map data to VRAM.
-u16 bgRowBuffer[VDP_PLANE_TILE_WIDTH];
-u16 bgColumnBuffer[VDP_PLANE_TILE_HEIGHT];
+u16 bgRowBuffer1[VDP_PLANE_TILE_WIDTH];
+u16 bgRowBuffer2[VDP_PLANE_TILE_WIDTH];
+u16 bgColumnBuffer1[VDP_PLANE_TILE_HEIGHT];
+u16 bgColumnBuffer2[VDP_PLANE_TILE_HEIGHT];
 
 // SGDK Map structures.  w and h are width and height in tiles.
 Map bgMap;
@@ -64,10 +66,10 @@ void ScrollingMap_init()
     // Calculate row offsets so we don't need to multiply later.
     u16 rowOffset = 0;
     u16 i;
-    for (i = 0; i < bgMap.h; i++)
+    for (i = 0; i < bgMap.h; i += 2)
     {
-        bgRowOffsets[i] = rowOffset;
-        rowOffset += bgMap.w;
+        bgRowOffsets[i >> 1] = rowOffset;
+        rowOffset += (bgMap.w << 1);
     }
 
     updateCamera();
@@ -116,7 +118,7 @@ void ScrollingMap_updateVDP()
 void redrawBackgroundRow(u16 rowToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[rowToUpdate] + bgCameraTileX;
+    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[rowToUpdate >> 1] + bgCameraTileX;
 
     u16 rowBufferIdx = bgCameraTileX;
     u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
@@ -127,19 +129,21 @@ void redrawBackgroundRow(u16 rowToUpdate)
     {
         rowBufferIdx &= 0x3F;  // rowBufferIdx MOD 64 (VDP_PLANE_TILE_WIDTH)
         // TODO -- Need to determine which is better -- rowBuffer[rowBufferIdx] or *(rowBuffer + rowBufferIdx).
-        bgRowBuffer[rowBufferIdx] = baseTile + *mapDataAddr;
+        bgRowBuffer1[rowBufferIdx] = baseTile + *mapDataAddr;
+        bgRowBuffer2[rowBufferIdx] = baseTile + *(mapDataAddr + bgMap.w);
         rowBufferIdx++;
         mapDataAddr++;
     }
 
     // Queue copying the buffer into VRAM.
-    DMA_queueDma(DMA_VRAM, (u32) bgRowBuffer, PLANE_BG + ((((rowToUpdate & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
+    DMA_queueDma(DMA_VRAM, (u32) bgRowBuffer1, PLANE_BG + ((((rowToUpdate & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
+    DMA_queueDma(DMA_VRAM, (u32) bgRowBuffer2, PLANE_BG + (((((rowToUpdate + 1) & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
 }
 
 void redrawBackgroundColumn(u16 columnToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY] + columnToUpdate;
+    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY >> 1] + columnToUpdate;
 
     u16 columnBufferIdx = bgCameraTileY;
     u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
@@ -149,13 +153,15 @@ void redrawBackgroundColumn(u16 columnToUpdate)
     for (i = VDP_PLANE_TILE_HEIGHT; i != 0; i--)
     {
         columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)
-        bgColumnBuffer[columnBufferIdx] = baseTile + *mapDataAddr;
+        bgColumnBuffer1[columnBufferIdx] = baseTile + *mapDataAddr;
+        bgColumnBuffer2[columnBufferIdx] = baseTile + *(mapDataAddr + 1);
         columnBufferIdx++;
         mapDataAddr += bgMap.w;
     }
 
     // Queue copying the buffer into VRAM.
-    DMA_queueDma(DMA_VRAM, (u32) bgColumnBuffer, PLANE_BG + ((columnToUpdate & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+    DMA_queueDma(DMA_VRAM, (u32) bgColumnBuffer1, PLANE_BG + ((columnToUpdate & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+    DMA_queueDma(DMA_VRAM, (u32) bgColumnBuffer2, PLANE_BG + (((columnToUpdate + 1) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
 }
 
 // Redraw the whole screen.  Normally this would be done with the screen blacked out.
@@ -168,7 +174,7 @@ void redrawBackgroundScreen()
         currentCol--;
 
         // Calculate where in the tilemap the new row's tiles are located.
-        const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY] + bgCameraTileX + currentCol;
+        const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY >> 1] + bgCameraTileX + currentCol;
 
         u16 columnBufferIdx = bgCameraTileY;
         u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
@@ -178,13 +184,15 @@ void redrawBackgroundScreen()
         for (i = VDP_PLANE_TILE_HEIGHT; i != 0; i--)
         {
             columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)
-            bgColumnBuffer[columnBufferIdx] = baseTile + *mapDataAddr;
+            bgColumnBuffer1[columnBufferIdx] = baseTile + *mapDataAddr;
+            bgColumnBuffer2[columnBufferIdx] = baseTile + *(mapDataAddr + 1);
             columnBufferIdx++;
             mapDataAddr += bgMap.w;
         }
 
         // Since we're redrawing the whole screen, do the DMA immediately instead of queuing it up.
-        DMA_doDma(DMA_VRAM, (u32) bgColumnBuffer, PLANE_BG + (((bgCameraTileX + currentCol) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+        DMA_doDma(DMA_VRAM, (u32) bgColumnBuffer1, PLANE_BG + (((bgCameraTileX + currentCol) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+        DMA_doDma(DMA_VRAM, (u32) bgColumnBuffer2, PLANE_BG + (((bgCameraTileX + currentCol + 1) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
     }
     while (currentCol != 0);
 }
@@ -205,6 +213,8 @@ void updateCamera()
         bgCameraPixelY = bgCameraLimitPixelY;
     }
 
-    bgCameraTileX = PIXEL_TO_TILE(bgCameraPixelX);
-    bgCameraTileY = PIXEL_TO_TILE(bgCameraPixelY);
+    // bgCameraTileX only changes when the camera moves 16 pixels horizontally.  & 0xFFFE means it will always be an even number.
+    bgCameraTileX = PIXEL_TO_TILE(bgCameraPixelX) & 0xFFFE;
+    // bgCameraTileY only changes when the camera moves 16 pixels vertically.  & 0xFFFE means it will always be an even number.
+    bgCameraTileY = PIXEL_TO_TILE(bgCameraPixelY) & 0xFFFE;
 }
