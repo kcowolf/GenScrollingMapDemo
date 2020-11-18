@@ -19,7 +19,6 @@ void ScrollingMap_updateVDP();
 // 128 tiles = 1024 pixels = 4.57 times the height of the screen.  Seems like a reasonable limit.
 #define ROW_OFFSET_COUNT 128
 
-u16 fgRowOffsets[ROW_OFFSET_COUNT];
 u16 bgRowOffsets[ROW_OFFSET_COUNT];
 
 #endif // SCROLLINGMAP_H

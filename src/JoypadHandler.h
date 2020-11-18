@@ -8,7 +8,7 @@ void Joypad_update();
 // TODO -- Normally these wouldn't be exposed here.  JoypadHandler would manipulate the player's
 // position and the camera's position would be calculated based on that.  However, for this demo
 // I let the JoypadHandler manipulate the camera coordinates directly.
-extern u32 fgCameraPixelX;
-extern u32 fgCameraPixelY;
+extern u32 bgCameraPixelX;
+extern u32 bgCameraPixelY;
 
 #endif // JOYPADHANDLER_H
