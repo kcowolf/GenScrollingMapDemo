@@ -168,10 +168,10 @@ void redrawBackgroundColumn(u16 columnToUpdate)
 
 void redrawBackgroundScreen()
 {
-    u16 currentCol = SCREEN_TILE_WIDTH_PLUS_ONE;
+    u16 currentCol = SCREEN_TILE_WIDTH_PLUS_TWO;
     do
     {
-        currentCol--;
+        currentCol -= 2;
 
         // Calculate where in the tilemap the new row's tiles are located.
         const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY >> 1] + bgCameraTileX + currentCol;
