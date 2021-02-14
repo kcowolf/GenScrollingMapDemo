@@ -32,7 +32,7 @@ int main()
     {
         Joypad_update();
         ScrollingMap_update();
-        VDP_waitVSync();
+        SYS_doVBlankProcess();
         ScrollingMap_updateVDP();
     }
 }
