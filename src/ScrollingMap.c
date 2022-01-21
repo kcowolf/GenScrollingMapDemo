@@ -14,11 +14,8 @@
 // NOTE: Height of background map must be ((height of foreground map / 2) + 112).
 // NOTE: Assumes background will each only use one palette.  Sonic 2's foregrounds can use at least 2.
 
-#define PAL_FG PAL1
-#define PAL_BG PAL0
-
-#define PLANE_FG VDP_PLAN_A
-#define PLANE_BG VDP_PLAN_B
+#define PLANE_FG VDP_BG_A
+#define PLANE_BG VDP_BG_B
 
 // The maximum coordinates (towards the bottom right) where the camera can be without showing anything beyond the map edges.
 u32 fgCameraLimitPixelX;
@@ -42,9 +39,14 @@ u16 fgColumnBuffer[VDP_PLANE_TILE_HEIGHT];
 u16 bgRowBuffer[VDP_PLANE_TILE_WIDTH];
 u16 bgColumnBuffer[VDP_PLANE_TILE_HEIGHT];
 
-// SGDK Map structures.  w and h are width and height in tiles.
-Map fgMap;
-Map bgMap;
+u16 fgMapTileWidth;
+u16 fgMapTileHeight;
+const u16* fgMapTilemap;
+
+u16 bgMapTileWidth;
+u16 bgMapTileHeight;
+const u16* bgMapTilemap;
+
 
 u16 fgTilesetStartIdx;
 u16 bgTilesetStartIdx;
@@ -61,41 +63,41 @@ void ScrollingMap_init()
 {
     VDP_setPlanSize(VDP_PLANE_TILE_WIDTH, VDP_PLANE_TILE_HEIGHT);
 
-    fgMap.w = TILEMAP_TEST_FG_TILE_WIDTH;
-    fgMap.h = TILEMAP_TEST_FG_TILE_HEIGHT;
-    fgMap.tilemap = (u16*) TILEMAP_TEST_FG_MAP;
+    fgMapTileWidth = TILEMAP_FG_TILE_WIDTH;
+    fgMapTileHeight = TILEMAP_FG_TILE_HEIGHT;
+    fgMapTilemap = (u16*) TILEMAP_FG;
 
-    bgMap.w = TILEMAP_TEST_BG_TILE_WIDTH;
-    bgMap.h = TILEMAP_TEST_BG_TILE_HEIGHT;
-    bgMap.tilemap = (u16*) TILEMAP_TEST_BG_MAP;
+    bgMapTileWidth = TILEMAP_BG_TILE_WIDTH;
+    bgMapTileHeight = TILEMAP_BG_TILE_HEIGHT;
+    bgMapTilemap = (u16*) TILEMAP_BG;
 
     // TODO -- Initialize the camera's position based on the player's starting position.
     fgCameraPixelX = 0;
     fgCameraPixelY = 0;
-    fgCameraLimitPixelX = TILE_TO_PIXEL(fgMap.w) - SCREEN_PIXEL_WIDTH;
-    fgCameraLimitPixelY = TILE_TO_PIXEL(fgMap.h) - SCREEN_PIXEL_HEIGHT;
+    fgCameraLimitPixelX = TILE_TO_PIXEL(fgMapTileWidth) - SCREEN_PIXEL_WIDTH;
+    fgCameraLimitPixelY = TILE_TO_PIXEL(fgMapTileHeight) - SCREEN_PIXEL_HEIGHT;
 
     // Load tiles
     bgTilesetStartIdx = MAP_TILE_START_IDX;
-    fgTilesetStartIdx = MAP_TILE_START_IDX + TILEMAP_TEST_BG_TILE_COUNT;
+    fgTilesetStartIdx = MAP_TILE_START_IDX + TILESET_BG_TILE_COUNT;
 
-    VDP_loadTileData((const u32*) TILEMAP_TEST_BG_TILES, bgTilesetStartIdx, TILEMAP_TEST_BG_TILE_COUNT, 0);
-    VDP_loadTileData((const u32*) TILEMAP_TEST_FG_TILES, fgTilesetStartIdx, TILEMAP_TEST_FG_TILE_COUNT, 0);
+    VDP_loadTileData((const u32*) TILESET_BG, bgTilesetStartIdx, TILESET_BG_TILE_COUNT, 0);
+    VDP_loadTileData((const u32*) TILESET_FG, fgTilesetStartIdx, TILESET_FG_TILE_COUNT, 0);
 
     // Calculate row offsets so we don't need to multiply later.
     u16 rowOffset = 0;
     u16 i;
-    for (i = 0; i < fgMap.h; i++)
+    for (i = 0; i < fgMapTileHeight; i++)
     {
         fgRowOffsets[i] = rowOffset;
-        rowOffset += fgMap.w;
+        rowOffset += fgMapTileWidth;
     }
 
     rowOffset = 0;
-    for (i = 0; i < bgMap.h; i++)
+    for (i = 0; i < bgMapTileHeight; i++)
     {
         bgRowOffsets[i] = rowOffset;
-        rowOffset += bgMap.w;
+        rowOffset += bgMapTileWidth;
     }
 
     updateCamera();
@@ -163,21 +165,21 @@ void ScrollingMap_update()
 void ScrollingMap_updateVDP()
 {
     // Foreground
-    VDP_setHorizontalScroll(PLAN_A, -fgCameraPixelX);
-    VDP_setVerticalScroll(PLAN_A, fgCameraPixelY);
+    VDP_setHorizontalScroll(BG_A, -fgCameraPixelX);
+    VDP_setVerticalScroll(BG_A, fgCameraPixelY);
 
     // Background, scrolls at half the rate.
-    VDP_setHorizontalScroll(PLAN_B, -(fgCameraPixelX >> 1));
-    VDP_setVerticalScroll(PLAN_B, (fgCameraPixelY >> 1));
+    VDP_setHorizontalScroll(BG_B, -(fgCameraPixelX >> 1));
+    VDP_setVerticalScroll(BG_B, (fgCameraPixelY >> 1));
 }
 
 void redrawForegroundRow(u16 rowToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = fgMap.tilemap + fgRowOffsets[rowToUpdate] + fgCameraTileX;
+    const u16* mapDataAddr = fgMapTilemap + fgRowOffsets[rowToUpdate] + fgCameraTileX;
 
     u16 rowBufferIdx = fgCameraTileX;
-    u16 baseTile = TILE_ATTR_FULL(PAL_FG, 0, 0, 0, fgTilesetStartIdx);
+    u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, fgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
     u16 i;
@@ -191,16 +193,16 @@ void redrawForegroundRow(u16 rowToUpdate)
     }
 
     // Queue copying the buffer into VRAM.
-    DMA_queueDma(DMA_VRAM, (u32) fgRowBuffer, PLANE_FG + ((((rowToUpdate & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
+    DMA_queueDma(DMA_VRAM, (void*) fgRowBuffer, PLANE_FG + ((((rowToUpdate & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
 }
 
 void redrawBackgroundRow(u16 rowToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[rowToUpdate] + bgCameraTileX;
+    const u16* mapDataAddr = bgMapTilemap + bgRowOffsets[rowToUpdate] + bgCameraTileX;
 
     u16 rowBufferIdx = bgCameraTileX;
-    u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
+    u16 baseTile = TILE_ATTR_FULL(PAL0, 0, 0, 0, bgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
     u16 i;
@@ -214,16 +216,16 @@ void redrawBackgroundRow(u16 rowToUpdate)
     }
 
     // Queue copying the buffer into VRAM.
-    DMA_queueDma(DMA_VRAM, (u32) bgRowBuffer, PLANE_BG + ((((rowToUpdate & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
+    DMA_queueDma(DMA_VRAM, (void*) bgRowBuffer, PLANE_BG + ((((rowToUpdate & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
 }
 
 void redrawForegroundColumn(u16 columnToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = fgMap.tilemap + fgRowOffsets[fgCameraTileY] + columnToUpdate;
+    const u16* mapDataAddr = fgMapTilemap + fgRowOffsets[fgCameraTileY] + columnToUpdate;
 
     u16 columnBufferIdx = fgCameraTileY;
-    u16 baseTile = TILE_ATTR_FULL(PAL_FG, 0, 0, 0, fgTilesetStartIdx);
+    u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, fgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
     u16 i;
@@ -232,20 +234,20 @@ void redrawForegroundColumn(u16 columnToUpdate)
         columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)
         fgColumnBuffer[columnBufferIdx] = baseTile + *mapDataAddr;
         columnBufferIdx++;
-        mapDataAddr += fgMap.w;
+        mapDataAddr += fgMapTileWidth;
     }
 
     // Queue copying the buffer into VRAM.
-    DMA_queueDma(DMA_VRAM, (u32) fgColumnBuffer, PLANE_FG + ((columnToUpdate & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+    DMA_queueDma(DMA_VRAM, (void*) fgColumnBuffer, PLANE_FG + ((columnToUpdate & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
 }
 
 void redrawBackgroundColumn(u16 columnToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY] + columnToUpdate;
+    const u16* mapDataAddr = bgMapTilemap + bgRowOffsets[bgCameraTileY] + columnToUpdate;
 
     u16 columnBufferIdx = bgCameraTileY;
-    u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
+    u16 baseTile = TILE_ATTR_FULL(PAL0, 0, 0, 0, bgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
     u16 i;
@@ -254,11 +256,11 @@ void redrawBackgroundColumn(u16 columnToUpdate)
         columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)
         bgColumnBuffer[columnBufferIdx] = baseTile + *mapDataAddr;
         columnBufferIdx++;
-        mapDataAddr += bgMap.w;
+        mapDataAddr += bgMapTileWidth;
     }
 
     // Queue copying the buffer into VRAM.
-    DMA_queueDma(DMA_VRAM, (u32) bgColumnBuffer, PLANE_BG + ((columnToUpdate & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+    DMA_queueDma(DMA_VRAM, (void*) bgColumnBuffer, PLANE_BG + ((columnToUpdate & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
 }
 
 // Redraw the whole screen.  Normally this would be done with the screen blacked out.
@@ -270,10 +272,10 @@ void redrawForegroundScreen()
         currentCol--;
 
         // Calculate where in the tilemap the new row's tiles are located.
-        const u16* mapDataAddr = fgMap.tilemap + fgRowOffsets[fgCameraTileY] + fgCameraTileX + currentCol;
+        const u16* mapDataAddr = fgMapTilemap + fgRowOffsets[fgCameraTileY] + fgCameraTileX + currentCol;
 
         u16 columnBufferIdx = fgCameraTileY;
-        u16 baseTile = TILE_ATTR_FULL(PAL_FG, 0, 0, 0, fgTilesetStartIdx);
+        u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, fgTilesetStartIdx);
 
         // Copy the tiles into the buffer.
         u16 i;
@@ -282,11 +284,11 @@ void redrawForegroundScreen()
             columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)
             fgColumnBuffer[columnBufferIdx] = baseTile + *mapDataAddr;
             columnBufferIdx++;
-            mapDataAddr += fgMap.w;
+            mapDataAddr += fgMapTileWidth;
         }
 
         // Since we're redrawing the whole screen, do the DMA immediately instead of queuing it up.
-        DMA_doDma(DMA_VRAM, (u32) fgColumnBuffer, PLANE_FG + (((fgCameraTileX + currentCol) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+        DMA_doDma(DMA_VRAM, (void*) fgColumnBuffer, PLANE_FG + (((fgCameraTileX + currentCol) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
     }
     while (currentCol != 0);
 }
@@ -299,10 +301,10 @@ void redrawBackgroundScreen()
         currentCol--;
 
         // Calculate where in the tilemap the new row's tiles are located.
-        const u16* mapDataAddr = bgMap.tilemap + bgRowOffsets[bgCameraTileY] + bgCameraTileX + currentCol;
+        const u16* mapDataAddr = bgMapTilemap + bgRowOffsets[bgCameraTileY] + bgCameraTileX + currentCol;
 
         u16 columnBufferIdx = bgCameraTileY;
-        u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
+        u16 baseTile = TILE_ATTR_FULL(PAL0, 0, 0, 0, bgTilesetStartIdx);
 
         // Copy the tiles into the buffer.
         u16 i;
@@ -311,11 +313,11 @@ void redrawBackgroundScreen()
             columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)
             bgColumnBuffer[columnBufferIdx] = baseTile + *mapDataAddr;
             columnBufferIdx++;
-            mapDataAddr += bgMap.w;
+            mapDataAddr += bgMapTileWidth;
         }
 
         // Since we're redrawing the whole screen, do the DMA immediately instead of queuing it up.
-        DMA_doDma(DMA_VRAM, (u32) bgColumnBuffer, PLANE_BG + (((bgCameraTileX + currentCol) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
+        DMA_doDma(DMA_VRAM, (void*) bgColumnBuffer, PLANE_BG + (((bgCameraTileX + currentCol) & VDP_PLANE_TILE_WIDTH_MINUS_ONE) << 1), VDP_PLANE_TILE_HEIGHT, VDP_PLANE_TILE_WIDTH_TIMES_TWO);
     }
     while (currentCol != 0);
 }

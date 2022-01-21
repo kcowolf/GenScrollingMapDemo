@@ -1,0 +1,27 @@
+out_h "graphics.h" GRAPHICS_H
+out_c "graphics.c"
+
+# Foreground
+
+image IMG_FG "TestMap1.png" FIX_COLORS
+
+tileset TILESET_FG
+
+palette PAL_FG
+palette_color PAL_FG 224 0 224
+palette_colors PAL_FG IMG_FG 0 0 640 528
+
+tilemap TILEMAP_FG IMG_FG PAL_FG TILESET_FG 0 0 80 66
+
+
+
+# Background
+
+image IMG_BG "TestMap2.png" FIX_COLORS
+
+tileset TILESET_BG
+
+palette PAL_BG
+palette_colors PAL_BG IMG_BG 0 0 480 376
+
+tilemap TILEMAP_BG IMG_BG PAL_BG TILESET_BG 0 0 60 47
