@@ -12,8 +12,6 @@
 
 // NOTE: Assumes background will each only use one palette.  Sonic 2's foregrounds can use at least 2.
 
-#define PAL_BG PAL1
-
 #define PLANE_BG VDP_BG_B
 
 // The maximum coordinates (towards the bottom right) where the camera can be without showing anything beyond the map edges.
@@ -50,9 +48,9 @@ void ScrollingMap_init()
 {
     VDP_setPlanSize(VDP_PLANE_TILE_WIDTH, VDP_PLANE_TILE_HEIGHT);
 
-    mapTileWidth = TILEMAP_TEST_FG_TILE_WIDTH;
-    mapTileHeight = TILEMAP_TEST_FG_TILE_HEIGHT;
-    tileMap = TILEMAP_TEST_FG_MAP;
+    mapTileWidth = TILEMAP_FG_TILE_WIDTH;
+    mapTileHeight = TILEMAP_FG_TILE_HEIGHT;
+    tileMap = TILEMAP_FG;
 
     // TODO -- Initialize the camera's position based on the player's starting position.
     bgCameraPixelX = 0;
@@ -63,7 +61,7 @@ void ScrollingMap_init()
     // Load tiles
     bgTilesetStartIdx = MAP_TILE_START_IDX;
 
-    VDP_loadTileData((const u32*) TILEMAP_TEST_FG_TILES, bgTilesetStartIdx, TILEMAP_TEST_FG_TILE_COUNT, 0);
+    VDP_loadTileData((const u32*) TILESET_FG, bgTilesetStartIdx, TILESET_FG_TILE_COUNT, 0);
 
     // Calculate row offsets so we don't need to multiply later.
     u16 rowOffset = 0;
@@ -123,7 +121,7 @@ void redrawBackgroundRow(u16 rowToUpdate)
     const u16* mapDataAddr = tileMap + bgRowOffsets[rowToUpdate >> 1] + bgCameraTileX;
 
     u16 rowBufferIdx = bgCameraTileX;
-    u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
+    u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
     u16 i;
@@ -148,7 +146,7 @@ void redrawBackgroundColumn(u16 columnToUpdate)
     const u16* mapDataAddr = tileMap + bgRowOffsets[bgCameraTileY >> 1] + columnToUpdate;
 
     u16 columnBufferIdx = bgCameraTileY;
-    u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
+    u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
     u16 i;
@@ -179,7 +177,7 @@ void redrawBackgroundScreen()
         const u16* mapDataAddr = tileMap + bgRowOffsets[bgCameraTileY >> 1] + bgCameraTileX + currentCol;
 
         u16 columnBufferIdx = bgCameraTileY;
-        u16 baseTile = TILE_ATTR_FULL(PAL_BG, 0, 0, 0, bgTilesetStartIdx);
+        u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
 
         // Copy the tiles into the buffer.
         u16 i;
