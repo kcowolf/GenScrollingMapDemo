@@ -1,10 +1,9 @@
 #include "JoypadHandler.h"
 
-// TOP_SPEED is in pixels/frame.  Maximum value is 8.
+// TOP_SPEED is in pixels/frame.  Maximum value is 16.
 #define TOP_SPEED 4
 
 u16 joystate;
-u16 pressedStart = 0;
 
 void Joypad_update()
 {

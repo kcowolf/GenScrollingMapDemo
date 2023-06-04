@@ -19,6 +19,6 @@ void ScrollingMap_updateVDP();
 // If ROW_OFFSET_COUNT == 128, the maximum map height is 256 tiles (2048 pixels).
 #define ROW_OFFSET_COUNT 128
 
-u16 bgRowOffsets[ROW_OFFSET_COUNT];
+extern uint16_t bgRowOffsets[ROW_OFFSET_COUNT];
 
 #endif // SCROLLINGMAP_H

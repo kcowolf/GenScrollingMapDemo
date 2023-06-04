@@ -15,32 +15,33 @@
 #define PLANE_BG VDP_BG_B
 
 // The maximum coordinates (towards the bottom right) where the camera can be without showing anything beyond the map edges.
-u32 bgCameraLimitPixelX;
-u32 bgCameraLimitPixelY;
+uint32_t bgCameraLimitPixelX;
+uint32_t bgCameraLimitPixelY;
 
 // The coordinates of the camera (top-left pixel on the screen).  These will be clamped to be within the map boundaries (0,0)-(cameraLimitPixelX,cameraLimitPixelY)
-u32 bgCameraPixelX;
-u32 bgCameraPixelY;
+uint32_t bgCameraPixelX;
+uint32_t bgCameraPixelY;
 
 // Coordinates of the tile containing bgCameraPixelX and bgCameraPixelY.
-u16 bgCameraTileX;
-u16 bgCameraTileY;
+uint16_t bgCameraTileX;
+uint16_t bgCameraTileY;
 
 // Buffers used for copying map data to VRAM.
-u16 bgRowBuffer1[VDP_PLANE_TILE_WIDTH];
-u16 bgRowBuffer2[VDP_PLANE_TILE_WIDTH];
-u16 bgColumnBuffer1[VDP_PLANE_TILE_HEIGHT];
-u16 bgColumnBuffer2[VDP_PLANE_TILE_HEIGHT];
+uint16_t bgRowBuffer1[VDP_PLANE_TILE_WIDTH];
+uint16_t bgRowBuffer2[VDP_PLANE_TILE_WIDTH];
+uint16_t bgColumnBuffer1[VDP_PLANE_TILE_HEIGHT];
+uint16_t bgColumnBuffer2[VDP_PLANE_TILE_HEIGHT];
 
-u16 mapTileWidth;
-u16 mapTileHeight;
-const u16* tileMap;
+uint16_t mapTileWidth;
+uint16_t mapTileHeight;
+const uint16_t* tileMap;
 
+uint16_t bgTilesetStartIdx;
 
-u16 bgTilesetStartIdx;
+uint16_t bgRowOffsets[ROW_OFFSET_COUNT];
 
-void redrawBackgroundRow(u16 rowToUpdate);
-void redrawBackgroundColumn(u16 columnToUpdate);
+void redrawBackgroundRow(uint16_t rowToUpdate);
+void redrawBackgroundColumn(uint16_t columnToUpdate);
 void redrawBackgroundScreen();
 void updateCamera();
 
@@ -61,11 +62,11 @@ void ScrollingMap_init()
     // Load tiles
     bgTilesetStartIdx = MAP_TILE_START_IDX;
 
-    VDP_loadTileData((const u32*) TILESET_FG, bgTilesetStartIdx, TILESET_FG_TILE_COUNT, 0);
+    VDP_loadTileData((const uint32_t*) TILESET_FG, bgTilesetStartIdx, TILESET_FG_TILE_COUNT, 0);
 
     // Calculate row offsets so we don't need to multiply later.
-    u16 rowOffset = 0;
-    u16 i;
+    uint16_t rowOffset = 0;
+    uint16_t i;
     for (i = 0; i < mapTileHeight; i += 2)
     {
         bgRowOffsets[i >> 1] = rowOffset;
@@ -79,8 +80,8 @@ void ScrollingMap_init()
 
 void ScrollingMap_update()
 {
-    u16 oldBGCameraTileX = bgCameraTileX;
-    u16 oldBGCameraTileY = bgCameraTileY;
+    uint16_t oldBGCameraTileX = bgCameraTileX;
+    uint16_t oldBGCameraTileY = bgCameraTileY;
 
     updateCamera();
 
@@ -115,16 +116,16 @@ void ScrollingMap_updateVDP()
     VDP_setVerticalScroll(BG_B, (bgCameraPixelY));
 }
 
-void redrawBackgroundRow(u16 rowToUpdate)
+void redrawBackgroundRow(uint16_t rowToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = tileMap + bgRowOffsets[rowToUpdate >> 1] + bgCameraTileX;
+    const uint16_t* mapDataAddr = tileMap + bgRowOffsets[rowToUpdate >> 1] + bgCameraTileX;
 
-    u16 rowBufferIdx = bgCameraTileX;
-    u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
+    uint16_t rowBufferIdx = bgCameraTileX;
+    uint16_t baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
-    u16 i;
+    uint16_t i;
     for (i = VDP_PLANE_TILE_WIDTH; i != 0; i--)
     {
         rowBufferIdx &= 0x3F;  // rowBufferIdx MOD 64 (VDP_PLANE_TILE_WIDTH)
@@ -140,16 +141,16 @@ void redrawBackgroundRow(u16 rowToUpdate)
     DMA_queueDma(DMA_VRAM, (void*) bgRowBuffer2, PLANE_BG + (((((rowToUpdate + 1) & VDP_PLANE_TILE_HEIGHT_MINUS_ONE) << 6)) << 1), VDP_PLANE_TILE_WIDTH, 2);
 }
 
-void redrawBackgroundColumn(u16 columnToUpdate)
+void redrawBackgroundColumn(uint16_t columnToUpdate)
 {
     // Calculate where in the tilemap the new row's tiles are located.
-    const u16* mapDataAddr = tileMap + bgRowOffsets[bgCameraTileY >> 1] + columnToUpdate;
+    const uint16_t* mapDataAddr = tileMap + bgRowOffsets[bgCameraTileY >> 1] + columnToUpdate;
 
-    u16 columnBufferIdx = bgCameraTileY;
-    u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
+    uint16_t columnBufferIdx = bgCameraTileY;
+    uint16_t baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
 
     // Copy the tiles into the buffer.
-    u16 i;
+    uint16_t i;
     for (i = VDP_PLANE_TILE_HEIGHT; i != 0; i--)
     {
         columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)
@@ -168,19 +169,19 @@ void redrawBackgroundColumn(u16 columnToUpdate)
 
 void redrawBackgroundScreen()
 {
-    u16 currentCol = SCREEN_TILE_WIDTH_PLUS_TWO;
+    uint16_t currentCol = SCREEN_TILE_WIDTH_PLUS_TWO;
     do
     {
         currentCol -= 2;
 
         // Calculate where in the tilemap the new row's tiles are located.
-        const u16* mapDataAddr = tileMap + bgRowOffsets[bgCameraTileY >> 1] + bgCameraTileX + currentCol;
+        const uint16_t* mapDataAddr = tileMap + bgRowOffsets[bgCameraTileY >> 1] + bgCameraTileX + currentCol;
 
-        u16 columnBufferIdx = bgCameraTileY;
-        u16 baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
+        uint16_t columnBufferIdx = bgCameraTileY;
+        uint16_t baseTile = TILE_ATTR_FULL(PAL1, 0, 0, 0, bgTilesetStartIdx);
 
         // Copy the tiles into the buffer.
-        u16 i;
+        uint16_t i;
         for (i = VDP_PLANE_TILE_HEIGHT; i != 0; i--)
         {
             columnBufferIdx &= 0x1F;  // columnBufferIdx MOD 32 (VDP_PLANE_TILE_HEIGHT)

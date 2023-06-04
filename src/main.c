@@ -18,20 +18,22 @@ int main()
     VDP_setHilightShadow(0);
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 
-    // Load palettes
-    VDP_setPalette(PAL0, PAL_BG);
-    VDP_setPalette(PAL1, PAL_FG);
-    VDP_setPaletteColor((PAL1 * 16), 0x0e00);  // Background color
-    VDP_setPalette(PAL2, palette_green);
-    VDP_setPalette(PAL3, palette_blue);
-    VDP_setPaletteColor((PAL3 * 16) + 15, 0x0eee);  // Text color
-
     ScrollingMap_init();
+
+    // Load palettes
+    PAL_setPalette(PAL0, PAL_BG, DMA);
+    PAL_setPalette(PAL1, PAL_FG, DMA);
+    PAL_setColor((PAL1 * 16), 0x0e00);  // Background color
+    PAL_setPalette(PAL2, PAL_BG, DMA);
+    PAL_setPalette(PAL3, PAL_FG, DMA);
+    PAL_setColor((PAL3 * 16) + 15, 0x0eee);  // Text color
 
     while(1)
     {
         Joypad_update();
         ScrollingMap_update();
+
+        // Wait for VBlank
         SYS_doVBlankProcess();
         ScrollingMap_updateVDP();
     }
